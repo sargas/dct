@@ -105,34 +105,15 @@ def _combine_images(image1, image2, offset=None, clip=True):
     image2 = shift(image2, [offsety, offsetx])
     image = image1 + image2
 
-    second_range = [(offsetx if offsetx >= 0 else None) , (offsetx if offsetx < 0 else None)]
-    first_range = [(offsety if offsety >= 0 else None) , (offsety if offsety < 0 else None)]
+    keep_range = [ (offsety, None), (offsetx, None) ]
+    if offsety < 0: keep_range[0] = (None, offsety)
+    if offsetx < 0: keep_range[1] = (None, offsetx)
 
-#    if clip:
-#        image = image[first_range[0]:first_range[1], second_range[0]:second_range[1]]
-#        #print(first_range[0],first_range[1], second_range[0],second_range[1])
-#    else:
-#        image[first_range[1]:first_range[0], second_range[1]:second_range[0]] = 0
-#        #print(first_range[1],first_range[0], second_range[1],second_range[0])
-    if offsetx >= 0:
-        if clip:
-            image = image[:, offsetx:]
-        else:
-            image[:, :offsetx] = 0
+    if clip:
+        image = image[keep_range[0][0]:keep_range[0][1], :]
+        image = image[:, keep_range[1][0]:keep_range[1][1] ]
     else:
-        if clip:
-            image = image[:, :offsetx]
-        else:
-            image[:, offsetx:] = 0
-    if offsety >= 0:
-        if clip:
-            image = image[offsety:,:]
-        else:
-            image[:offsety,:] = 0
-    else:
-        if clip:
-            image = image[:offsety,:]
-        else:
-            image[offsety:,:] = 0
+        image[keep_range[0][1]:keep_range[0][0], :] = 0
+        image[:, keep_range[1][1]:keep_range[1][0] ] = 0
 
     return image

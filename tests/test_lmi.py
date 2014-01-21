@@ -125,7 +125,7 @@ def test_divide_flat():
     with create_fake_fits_reader(fits.PrimaryHDU([[5,5,5],[10,10,10]])):
         img = lmi.open_image([None], flat=flat, medium_subtract=False)
         for i, j in product(np.arange(2), np.arange(3)):
-            assert_approx_equal(img.data[i,j], 5*(i+1)*2 / (2*i+1) )
+            assert_approx_equal(img.data[i,j], 10.0/(1 + 0.5*i))
 
 def test_divide_flat_and_subtract_bias():
     flat = fits.PrimaryHDU(np.array([[1,1,1],[2,2,2],[3,3,3]])/2.0)
