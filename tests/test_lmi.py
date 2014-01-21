@@ -1,9 +1,12 @@
 import numpy as np
-from numpy.testing import assert_equal, assert_array_equal, run_module_suite, dec
+from numpy.testing import assert_equal, assert_array_equal, run_module_suite, dec, assert_approx_equal
 from os import path
 from dct import lmi
 from numpy import ma
 import numpy.ma.testutils as matu
+from contextlib import contextmanager
+from astropy.io import fits
+from itertools import product
 
 DATA_PATH = path.join(path.dirname(__file__), 'data')
 
@@ -82,6 +85,55 @@ def test_zero_pad_to_same_size():
         c2 = lmi._zero_pad_to_same_size(test[1], test[0])
         assert_equal(c, (test[2], test[1], [test[3], test[4]]))
         assert_equal(c2, (test[1], test[2], [-test[3], -test[4]]))
+
+@contextmanager
+def create_fake_fits_reader(hdu):
+    old_fits = lmi.fits
+    try:
+        lmi.fits = type('Dummy', (object,), { "getdata": lambda x: hdu.data, "getheader": lambda x: hdu.header, "PrimaryHDU": fits.PrimaryHDU})
+        yield
+    finally:
+        lmi.fits = old_fits
+
+def test_open_flat():
+    with create_fake_fits_reader(fits.PrimaryHDU(5*np.ones( (5,5) ))):
+        flat = lmi.open_flat([None])
+        for i, j in product(np.arange(5), np.arange(5)):
+            assert_approx_equal(flat.data[i,j], 1)
+
+    with create_fake_fits_reader(fits.PrimaryHDU( np.array([[1,1,1],[2,2,2],[3,3,3]]) )):
+        flat = lmi.open_flat([None])
+        for i, j in product(np.arange(3), np.arange(3)):
+            assert_approx_equal(flat.data[i,j], (i+1)/2.0)
+
+def test_subtract_bias():
+    bias = fits.PrimaryHDU(5 * np.ones( (5,5) ) )
+    with create_fake_fits_reader(fits.PrimaryHDU(6.5*np.ones( (5,5) ))):
+        img = lmi.open_image([None], bias=bias, medium_subtract=False)
+        for i, j in product(np.arange(5), np.arange(5)):
+            assert_approx_equal(img.data[i,j], 1.5)
+
+def test_open_flat_with_bias():
+    bias = fits.PrimaryHDU(0.2 * np.ones( (5,5) ) )
+    with create_fake_fits_reader(fits.PrimaryHDU(5*np.ones( (5,5) ))):
+        flat = lmi.open_flat([None], bias)
+        for i, j in product(np.arange(5), np.arange(5)):
+            assert_approx_equal(flat.data[i,j], 1)
+
+def test_divide_flat():
+    flat = fits.PrimaryHDU([[0.5,0.5,0.5],[1.5,1.5,1.5]])
+    with create_fake_fits_reader(fits.PrimaryHDU([[5,5,5],[10,10,10]])):
+        img = lmi.open_image([None], flat=flat, medium_subtract=False)
+        for i, j in product(np.arange(2), np.arange(3)):
+            assert_approx_equal(img.data[i,j], 5*(i+1)*2 / (2*i+1) )
+
+def test_divide_flat_and_subtract_bias():
+    flat = fits.PrimaryHDU(np.array([[1,1,1],[2,2,2],[3,3,3]])/2.0)
+    bias = fits.PrimaryHDU(2 * np.ones( (3,3) ) )
+    with create_fake_fits_reader(fits.PrimaryHDU([[5,5,5],[10,10,10],[15,15,15]])):
+        img = lmi.open_image([None], flat=flat, bias=bias, medium_subtract=False)
+        for i, j in product(np.arange(3), np.arange(3)):
+            assert_approx_equal(img.data[i,j], (5*(i+1)-2) / ( (i+1)/2) )
 
 if __name__ == "__main__":
     run_module_suite()

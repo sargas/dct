@@ -28,11 +28,13 @@ def open_image(filelist, bias=None, flat=None, combine='offset_pad', overscan_re
     file_data = [fits.getdata(f) for f in filelist]
     hdu = fits.getheader(filelist[0]).copy()
 
-    if overscan_region == None:
+    if overscan_region is None and 'TRIMSEC' in hdu:
         overscan_match = re.match('^\[(\d*):(\d*),(\d*):(\d*)\]$', hdu['TRIMSEC'])
         minX, maxX, minY, maxY = map(int,overscan_match.group(3,4,1,2))
-    else:
+    elif overscan_region is not None:
         minX, maxX, minY, maxY = overscan_region
+    else:
+        minX, maxX, minY, maxY = 0, len(file_data[0]), 0, len(file_data[0][0])
 
     for i in range(len(file_data)):
         file_data[i] = file_data[i][minX:maxX, minY:maxY]
