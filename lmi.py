@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 import astropy.io.fits as fits
 import numpy as np

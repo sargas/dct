@@ -1,3 +1,4 @@
+from __future__ import division
 import numpy as np
 from numpy.testing import assert_equal, assert_array_equal, run_module_suite, dec, assert_approx_equal
 from os import path
@@ -88,12 +89,14 @@ def test_zero_pad_to_same_size():
 
 @contextmanager
 def create_fake_fits_reader(hdu):
-    old_fits = lmi.fits
+    old_methods = {"getdata": lmi.fits.getdata, "getheader": lmi.fits.getheader }
     try:
-        lmi.fits = type('Dummy', (object,), { "getdata": lambda x: hdu.data, "getheader": lambda x: hdu.header, "PrimaryHDU": fits.PrimaryHDU})
+        lmi.fits.getdata = lambda x : hdu.data
+        lmi.fits.getheader = lambda x : hdu.header
         yield
     finally:
-        lmi.fits = old_fits
+        lmi.fits.getdata = old_methods['getdata']
+        lmi.fits.getheader = old_methods['getheader']
 
 def test_open_flat():
     with create_fake_fits_reader(fits.PrimaryHDU(5*np.ones( (5,5) ))):
