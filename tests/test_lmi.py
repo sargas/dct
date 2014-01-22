@@ -1,9 +1,7 @@
 from __future__ import division
 import numpy as np
 from numpy.testing import assert_equal, assert_array_equal, run_module_suite, dec, assert_approx_equal, assert_allclose
-from os import path
 from dct import lmi
-from numpy import ma
 import numpy.ma.testutils as matu
 from contextlib import contextmanager
 from astropy.io import fits
@@ -149,6 +147,7 @@ def test_divide_flat_and_subtract_bias():
         for i, j in product(np.arange(3), np.arange(3)):
             assert_approx_equal(img.data[i,j], (5*(i+1)-2) / ( (i+1)/2) )
 
+def test_divide_flat_and_subtract_bias_random():
     a = np.outer(np.arange(40)+1, np.linspace(-2, 2, 50)) + 100
     flat = fits.PrimaryHDU(a / a.mean())
     b = np.ones( a.shape )
@@ -157,15 +156,15 @@ def test_divide_flat_and_subtract_bias():
 
     old_random_state = np.random.get_state()
     try:
-        np.random.seed(50)
-        c = np.random.randint(b.max()+10, np.iinfo('i2').max, size=b.shape)
+        for seed in range(50):
+            np.random.seed(seed)
+            c = np.random.randint(b.max()+10, np.iinfo('i2').max, size=b.shape)
+
+            with create_fake_fits_reader(fits.PrimaryHDU(c)):
+                img = lmi.open_image([None], flat=flat, bias=bias, medium_subtract=False)
+            assert_allclose(img.data, (c - b)/flat.data)
     finally:
         np.random.set_state(old_random_state)
-
-    with create_fake_fits_reader(fits.PrimaryHDU(c)):
-        img = lmi.open_image([None], flat=flat, bias=bias, medium_subtract=False)
-        for i, j in product(np.arange(len(b)), np.arange(len(b[0]))):
-            assert_approx_equal(img.data[i,j], (c[i,j] - b[i,j])/flat.data[i,j])
 
 if __name__ == "__main__":
     run_module_suite()
