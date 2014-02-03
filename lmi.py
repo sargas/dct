@@ -22,6 +22,43 @@ def combine_bias(filelist):
     return open_image(filelist, combine='median', medium_subtract=False)
 
 def open_image(filelist, bias=None, flat=None, combine='offset_pad', overscan_region=None, medium_subtract=True):
+    """
+    Combines images, taking into account the flats and biases given.
+
+    Parameters
+    ----------
+    filelist : {sequence, string}
+        A list of files (or single file) to open
+    bias : {HDUList, header data unit, 2-diminsional ndarray}, optional
+        The combined bias to subtract from the images. If an HDUList (i.e., from astropy.io.fits.open), there must only be one header data unit.
+    flat : {HDUList, header data unit, 2-diminsional ndarray}, optional
+        The combined, normalized flat to scale the images by. If an HDUList (i.e., from astropy.io.fits.open), there must only be one header data unit.
+    combine: str
+        One of the following string values to determine how the images are combined together. (Default: 'offset_pad')
+
+        'offset_trim'
+            An offset is found using crosscorrelation, and the overlapping region is added together. The region returned is a subset of the region of the sky viewed by all images.
+        'offset_pad'
+            An offset is found using crosscorrelation, and the images are zero-padded to show the same area of the sky as the first image. This means that the edges of the images are less trustworthy.
+        'median'
+            The median of the images are taken as the value for each pixel (useful for flats and biases)
+        'stacked'
+            Adds the images without any translations for offsets
+    overscan_region: sequence, optional
+        If set, gives the pixel bounds to include in the image. If unset, this is read from the TRIMSEC header if it exists.
+    medium_subtract: bool
+        If True, each image is normalized by its medium, lessening the effects of sky background.
+
+    Returns
+    -------
+    output : PrimaryHDU
+        A header data unit containing the combined data with a copy of the header of the first input image.
+
+    Notes
+    -----
+    Setting combine='offset_trim' may cause numpy.pad to be called, giving errors on versions of numpy before 1.7
+
+    """
     if hasattr(filelist, 'lower'):
         filelist = [filelist]
 
