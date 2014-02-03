@@ -27,10 +27,10 @@ def open_image(filelist, bias=None, flat=None, combine='offset_pad', overscan_re
         raise ValueError('combinue argument to open_image must be one of %s'
                 %str(VALID_COMBINE_VALUES))
     file_data = [fits.getdata(f) for f in filelist]
-    hdu = fits.getheader(filelist[0]).copy()
+    header = fits.getheader(filelist[0]).copy()
 
-    if overscan_region is None and 'TRIMSEC' in hdu:
-        overscan_match = re.match('^\[(\d*):(\d*),(\d*):(\d*)\]$', hdu['TRIMSEC'])
+    if overscan_region is None and 'TRIMSEC' in header:
+        overscan_match = re.match('^\[(\d*):(\d*),(\d*):(\d*)\]$', header['TRIMSEC'])
         minX, maxX, minY, maxY = map(int,overscan_match.group(3,4,1,2))
     elif overscan_region is not None:
         minX, maxX, minY, maxY = overscan_region
@@ -48,15 +48,15 @@ def open_image(filelist, bias=None, flat=None, combine='offset_pad', overscan_re
         file_data[i] = file_data[i].astype(np.float32)
 
     if combine == 'median':
-        median = np.median(file_data, axis=0)
+        combined = np.median(file_data, axis=0)
     elif combine == 'stacked':
-        median = np.sum(file_data, axis=0)
+        combined = np.sum(file_data, axis=0)
     elif combine == 'offset_trim':
-        median = reduce(_combine_images, file_data)
+        combined = reduce(_combine_images, file_data)
     elif combine == 'offset_pad':
-        median = reduce(lambda x1, x2: _combine_images(x1, x2, clip=False), file_data)
+        combined = reduce(lambda x1, x2: _combine_images(x1, x2, clip=False), file_data)
 
-    return fits.PrimaryHDU(median, hdu)
+    return fits.PrimaryHDU(combined, header)
 
 def get_halpha(ha_on, ha_off):
     ON_OFF_RATIO =  1068.9235000000006 / 265.45335000000017

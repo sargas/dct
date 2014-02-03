@@ -97,13 +97,11 @@ def create_fake_fits_reader(hdu):
 def test_open_flat():
     with create_fake_fits_reader(fits.PrimaryHDU(5*np.ones( (5,5) ))):
         flat = lmi.open_flat([None])
-        for i, j in product(np.arange(5), np.arange(5)):
-            assert_approx_equal(flat.data[i,j], 1)
+    assert_allclose(flat.data, np.ones(flat.shape))
 
     with create_fake_fits_reader(fits.PrimaryHDU( np.array([[1,1,1],[2,2,2],[3,3,3]]) )):
         flat = lmi.open_flat([None])
-        for i, j in product(np.arange(3), np.arange(3)):
-            assert_approx_equal(flat.data[i,j], (i+1)/2.0)
+    assert_allclose(flat.data, [[0.5, 0.5, 0.5],[1,1,1],[1.5,1.5,1.5]])
 
 def test_open_flat_is_normalized():
     old_random_state = np.random.get_state()
@@ -122,30 +120,26 @@ def test_subtract_bias():
     bias = fits.PrimaryHDU(5 * np.ones( (5,5) ) )
     with create_fake_fits_reader(fits.PrimaryHDU(6.5*np.ones( (5,5) ))):
         img = lmi.open_image([None], bias=bias, medium_subtract=False)
-        for i, j in product(np.arange(5), np.arange(5)):
-            assert_approx_equal(img.data[i,j], 1.5)
+    assert_allclose(img.data, 1.5*np.ones(img.shape))
 
 def test_open_flat_with_bias():
     bias = fits.PrimaryHDU(0.2 * np.ones( (5,5) ) )
     with create_fake_fits_reader(fits.PrimaryHDU(5*np.ones( (5,5) ))):
         flat = lmi.open_flat([None], bias)
-        for i, j in product(np.arange(5), np.arange(5)):
-            assert_approx_equal(flat.data[i,j], 1)
+    assert_allclose(flat.data, np.ones(flat.data.shape))
 
 def test_divide_flat():
     flat = fits.PrimaryHDU([[0.5,0.5,0.5],[1.5,1.5,1.5]])
     with create_fake_fits_reader(fits.PrimaryHDU([[5,5,5],[10,10,10]])):
         img = lmi.open_image([None], flat=flat, medium_subtract=False)
-        for i, j in product(np.arange(2), np.arange(3)):
-            assert_approx_equal(img.data[i,j], 10.0/(1 + 0.5*i))
+    assert_allclose(img.data, [[10,10,10],[20/3, 20/3, 20/3]])
 
 def test_divide_flat_and_subtract_bias():
     flat = fits.PrimaryHDU(np.array([[1,1,1],[2,2,2],[3,3,3]])/2.0)
     bias = fits.PrimaryHDU(2 * np.ones( (3,3) ) )
     with create_fake_fits_reader(fits.PrimaryHDU([[5,5,5],[10,10,10],[15,15,15]])):
         img = lmi.open_image([None], flat=flat, bias=bias, medium_subtract=False)
-        for i, j in product(np.arange(3), np.arange(3)):
-            assert_approx_equal(img.data[i,j], (5*(i+1)-2) / ( (i+1)/2) )
+    assert_allclose(img.data, [[6, 6, 6], [8, 8, 8], [26/3, 26/3, 26/3]])
 
 def test_divide_flat_and_subtract_bias_random():
     a = np.outer(np.arange(40)+1, np.linspace(-2, 2, 50)) + 100
