@@ -12,20 +12,38 @@ def file_helper(location):
     return lambda f, l: \
         [(location + os.sep + 'lmi.%04d.fits' % i) for i in range(f, l+1)]
 
-def open_flat(filelist, bias=None):
+def combine_flat(filelist, bias=None):
     flat = open_image(filelist, bias=bias, combine='median', medium_subtract=False)
     flat.data = flat.data.astype(np.float64)
     flat.data /= np.mean(flat.data)
     return flat
 
-def open_bias(filelist):
+def combine_bias(filelist):
     return open_image(filelist, combine='median', medium_subtract=False)
 
 def open_image(filelist, bias=None, flat=None, combine='offset_pad', overscan_region=None, medium_subtract=True):
+    if hasattr(filelist, 'lower'):
+        filelist = [filelist]
+
+    if isinstance(bias, fits.HDUList):
+        if len(bias) != 1:
+            raise ValueError("bias argument to open_image has more then one HDU")
+        bias = bias[0]
+    if hasattr(bias, 'data'):
+        bias = bias.data
+
+    if isinstance(flat, fits.HDUList):
+        if len(flat) != 1:
+            raise ValueError("flat argument to open_image has more then one HDU")
+        flat = flat[0]
+    if hasattr(flat, 'data'):
+        flat = flat.data
+
     VALID_COMBINE_VALUES = ['offset_trim', 'offset_pad', 'median', 'stacked']
     if combine not in VALID_COMBINE_VALUES:
         raise ValueError('combinue argument to open_image must be one of %s'
                 %str(VALID_COMBINE_VALUES))
+
     file_data = [fits.getdata(f) for f in filelist]
     header = fits.getheader(filelist[0]).copy()
 
@@ -40,9 +58,9 @@ def open_image(filelist, bias=None, flat=None, combine='offset_pad', overscan_re
     for i in range(len(file_data)):
         file_data[i] = file_data[i][minX:maxX, minY:maxY]
         if bias is not None:
-            file_data[i] = file_data[i] - bias.data
+            file_data[i] = file_data[i] - bias
         if flat is not None:
-            file_data[i] = file_data[i] / flat.data
+            file_data[i] = file_data[i] / flat
         if medium_subtract:
             file_data[i] -= np.median(file_data[i])
         file_data[i] = file_data[i].astype(np.float32)
