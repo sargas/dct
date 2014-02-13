@@ -7,7 +7,6 @@ from contextlib import contextmanager
 from astropy.io import fits
 from itertools import product
 
-@dec.slow
 def test_offset():
     X,Y=np.mgrid[-5:5:0.05,-5:5:0.05]
     Z=np.sqrt(X**2+Y**2)+np.sin(X**2+Y**2)

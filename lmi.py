@@ -81,7 +81,8 @@ def open_image(filelist, bias=None, flat=None, combine='offset_pad', overscan_re
         raise ValueError('combinue argument to open_image must be one of %s'
                 %str(VALID_COMBINE_VALUES))
 
-    file_data = [fits.getdata(f) for f in filelist]
+    # Upcast for more accurate division when dividing out the flats
+    file_data = np.array([fits.getdata(f) for f in filelist], dtype=np.float128)
     header = fits.getheader(filelist[0]).copy()
 
     if overscan_region is None and 'TRIMSEC' in header:
@@ -92,15 +93,16 @@ def open_image(filelist, bias=None, flat=None, combine='offset_pad', overscan_re
     else:
         minX, maxX, minY, maxY = 0, len(file_data[0]), 0, len(file_data[0][0])
 
-    for i in range(len(file_data)):
-        file_data[i] = file_data[i][minX:maxX, minY:maxY]
-        if bias is not None:
-            file_data[i] = file_data[i] - bias
-        if flat is not None:
-            file_data[i] = file_data[i] / flat
-        if medium_subtract:
-            file_data[i] -= np.median(file_data[i])
-        file_data[i] = file_data[i].astype(np.float32)
+    file_data = file_data[:, minX:maxX, minY:maxY]
+    if bias is not None:
+        file_data -= bias
+    if flat is not None:
+        file_data /= flat
+    if medium_subtract:
+        file_data -= np.median(file_data, axis=0)
+
+    # Downcast to keep the ram usage reasonable
+    file_data = file_data.astype(np.float32)
 
     if combine == 'median':
         combined = np.median(file_data, axis=0)
