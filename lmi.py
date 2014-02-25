@@ -3,8 +3,6 @@ import os
 import astropy.io.fits as fits
 import numpy as np
 import scipy.fftpack as fft
-import numpy.ma as ma
-from functools import reduce
 import re
 from scipy.ndimage.interpolation import shift
 
@@ -86,7 +84,7 @@ def open_image(filelist, bias=None, flat=None, combine='offset_pad', overscan_re
     header = fits.getheader(filelist[0]).copy()
 
     if overscan_region is None and 'TRIMSEC' in header:
-        overscan_match = re.match('^\[(\d*):(\d*),(\d*):(\d*)\]$', header['TRIMSEC'])
+        overscan_match = re.match(r'^\[(\d*):(\d*),(\d*):(\d*)\]$', header['TRIMSEC'])
         minX, maxX, minY, maxY = map(int,overscan_match.group(3,4,1,2))
     elif overscan_region is not None:
         minX, maxX, minY, maxY = overscan_region
@@ -108,10 +106,11 @@ def open_image(filelist, bias=None, flat=None, combine='offset_pad', overscan_re
         combined = np.median(file_data, axis=0)
     elif combine == 'stacked':
         combined = np.sum(file_data, axis=0)
-    elif combine == 'offset_trim':
-        combined = reduce(_combine_images, file_data)
-    elif combine == 'offset_pad':
-        combined = reduce(lambda x1, x2: _combine_images(x1, x2, clip=False), file_data)
+    elif combine == 'offset_trim' or combine == 'offset_pad':
+        clip = (combine == 'offset_trim')
+        combined = None
+        for image in file_data:
+            combined = _combine_images(combined, image, clip=clip)
 
     return fits.PrimaryHDU(combined, header)
 
@@ -149,6 +148,9 @@ def _zero_pad_to_same_size(a, b):
     return a, b, [ax-bx, ay-by]
 
 def _combine_images(image1, image2, offset=None, clip=True):
+    if image1 is None: return image2
+    if image2 is None: return image1
+
     image1, image2, padding_offset = _zero_pad_to_same_size(image1, image2)
 
     if offset is None:
