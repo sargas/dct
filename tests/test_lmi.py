@@ -159,5 +159,16 @@ def test_divide_flat_and_subtract_bias_random():
     finally:
         np.random.set_state(old_random_state)
 
+def test_median_subtract():
+    a = fits.PrimaryHDU(2 * np.ones( (3,3) ) ) # median == 2
+    with create_fake_fits_reader(a):
+        img = lmi.open_image([None], medium_subtract=True)
+        assert_allclose(img.data, np.zeros(a.data.shape))
+
+    b = fits.PrimaryHDU([[1,1,1],[0,0,0],[-1,-1,-1]]) # median = 0
+    with create_fake_fits_reader(b):
+        img = lmi.open_image([None], medium_subtract=True)
+        assert_allclose(img.data, b.data)
+
 if __name__ == "__main__":
     run_module_suite()

@@ -97,7 +97,8 @@ def open_image(filelist, bias=None, flat=None, combine='offset_pad', overscan_re
     if flat is not None:
         file_data /= flat
     if medium_subtract:
-        file_data -= np.median(file_data, axis=0)
+        for i, _ in enumerate(file_data):
+            file_data[i] -= np.median(file_data[i])
 
     # Downcast to keep the ram usage reasonable
     file_data = file_data.astype(np.float32)
@@ -162,7 +163,7 @@ def _combine_images(image1, image2, offset=None, clip=True):
     offset += padding_offset * (-1 if clip else 1)
     offsetx, offsety = [int(x) for x in offset]
 
-    image2 = shift(image2, [offsety, offsetx])
+    image2 = shift(image2, offset[::-1])
     image = image1 + image2
 
     keep_range = [ (offsety, None), (offsetx, None) ]
